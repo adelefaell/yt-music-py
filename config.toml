@@ -1,0 +1,9 @@
+[general]
+format = "mp3"
+download_path = "./downloaded"
+
+[lyrics]
+providers = ["lrclib"]
+
+[cover]
+providers = ["musicbrainz", "deezer", "discogs"]
