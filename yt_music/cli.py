@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import tomllib
+from importlib.metadata import version
 from pathlib import Path
 
 import yt_dlp
@@ -146,6 +147,7 @@ def cmd_config():
 
 def main():
     parser = argparse.ArgumentParser(prog='yt-music', description='YouTube Music downloader')
+    parser.add_argument('--version', action='version', version=f'%(prog)s {version("yt-music")}')
     sub = parser.add_subparsers(dest='command')
 
     dl = sub.add_parser('download', help='Download tracks from YouTube')

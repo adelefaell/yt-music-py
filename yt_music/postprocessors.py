@@ -118,8 +118,6 @@ def _embed_thumbnail_mp3(audio_path, image_data):
         audio.add_tags()
     audio.tags.delall('APIC')
     audio.tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=image_data))
-    for key in ('TXXX:cover_temp_path', 'TXXX:cover_provider', 'TXXX:cover_is_square'):
-        audio.tags.delall(key)
     audio.save()
 
 
@@ -169,25 +167,34 @@ _EMBEDDERS = {
 class EmbedCoverArtPP(PostProcessor):
     def run(self, info):
         filepath = info.get('filepath') or info.get('_filename')
+        tmp_cover_path = info.get('meta_cover_temp_path')
+
         if not filepath or not os.path.exists(filepath):
+            if tmp_cover_path and os.path.exists(tmp_cover_path):
+                os.unlink(tmp_cover_path)
             return [], info
 
         ext = os.path.splitext(filepath)[1].lower()
         embedder = _EMBEDDERS.get(ext)
         if embedder is None:
             cprint(f"[cover] ⊘ No embedder for {ext}, skipping", Color.YELLOW)
+            if tmp_cover_path and os.path.exists(tmp_cover_path):
+                os.unlink(tmp_cover_path)
             return [], info
 
-        tmp_cover_path = info.get('meta_cover_temp_path')
         provider = info.get('meta_cover_provider', '')
         is_square = provider.lower() in _KNOWN_SQUARE_COVER
 
         if tmp_cover_path and os.path.exists(tmp_cover_path):
             cover_path = filepath + '.cover.jpg'
             if is_square:
-                resize_square(tmp_cover_path)
+                success = resize_square(tmp_cover_path)
             else:
-                crop_to_square(tmp_cover_path)
+                success = crop_to_square(tmp_cover_path)
+
+            if not success:
+                cprint("[cover] ⚠ Image processing failed, using original", Color.YELLOW)
+
             shutil.move(tmp_cover_path, cover_path)
 
             with open(cover_path, 'rb') as f:
@@ -198,7 +205,6 @@ class EmbedCoverArtPP(PostProcessor):
             cover_path = None
             thumb_path = self._find_best_thumbnail(info)
             if thumb_path and os.path.exists(thumb_path):
-                crop_to_square(thumb_path)
                 with open(thumb_path, 'rb') as f:
                     image_data = f.read()
             else:
@@ -206,6 +212,8 @@ class EmbedCoverArtPP(PostProcessor):
 
         if not image_data.startswith(b'\xff\xd8'):
             cprint("[cover] ⊘ Invalid JPEG data, skipping embed", Color.YELLOW)
+            if cover_path and os.path.exists(cover_path):
+                os.unlink(cover_path)
             return [], info
 
         try:
