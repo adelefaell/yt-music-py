@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import tomllib
@@ -47,16 +48,13 @@ def _resolve_settings():
     return fmt, dl_path, lyrics_providers, cover_providers
 
 
-def main():
+def cmd_download(args):
     fmt, dl_path, lyrics_providers, cover_providers = _resolve_settings()
 
-    urls = []
-    i = 1
-    while i < len(sys.argv):
-        arg = sys.argv[i]
-        if arg == '--file':
-            i += 1
-            filepath = sys.argv[i]
+    urls = list(args.urls) if args.urls else []
+
+    if args.files:
+        for filepath in args.files:
             try:
                 with open(filepath) as f:
                     file_urls = [line.strip() for line in f if line.strip()]
@@ -65,12 +63,9 @@ def main():
             except FileNotFoundError:
                 cprint(f"[error] File not found: {filepath}", Color.RED)
                 sys.exit(1)
-        else:
-            urls.append(arg)
-        i += 1
 
     if not urls:
-        cprint(f"Usage: {os.path.basename(sys.argv[0])} [--file <path>] <url> [url...]", Color.YELLOW)
+        cprint("No URLs provided. Use 'yt-music download <url>...' or 'yt-music download --file <path>'.", Color.YELLOW)
         sys.exit(1)
 
     os.makedirs(dl_path, exist_ok=True)
@@ -138,3 +133,33 @@ def main():
                 summary.add_failed(url, str(e))
 
     summary.print_summary()
+
+
+def cmd_config():
+    fmt, dl_path, lyrics_providers, cover_providers = _resolve_settings()
+    cprint("[info] Current configuration:", Color.CYAN)
+    cprint(f"  format:          {fmt}", '')
+    cprint(f"  download_path:   {dl_path}", '')
+    cprint(f"  lyrics_providers: {lyrics_providers}", '')
+    cprint(f"  cover_providers:  {cover_providers}", '')
+
+
+def main():
+    parser = argparse.ArgumentParser(prog='yt-music', description='YouTube Music downloader')
+    sub = parser.add_subparsers(dest='command')
+
+    dl = sub.add_parser('download', help='Download tracks from YouTube')
+    dl.add_argument('urls', nargs='*', help='YouTube URLs to download')
+    dl.add_argument('--file', action='append', dest='files', metavar='PATH',
+                    help='File containing URLs (one per line)')
+
+    sub.add_parser('config', help='Show current configuration')
+
+    args = parser.parse_args()
+
+    if args.command == 'download':
+        cmd_download(args)
+    elif args.command == 'config':
+        cmd_config()
+    else:
+        parser.print_help()
