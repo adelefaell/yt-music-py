@@ -11,7 +11,10 @@ YouTube Music downloader with automatic lyrics and cover art embedding.
 
 ```bash
 uv sync
+cp config.toml.example config.toml
 ```
+
+Edit `config.toml` to customize your settings (see Configuration below).
 
 ## Usage
 
@@ -42,7 +45,13 @@ yt-music config
 
 ## Configuration
 
-Edit `config.toml` in the project root:
+Edit `config.toml` in the project root. If it doesn't exist, copy from the example:
+
+```bash
+cp config.toml.example config.toml
+```
+
+Example configuration:
 
 ```toml
 [general]

@@ -12,7 +12,7 @@ _PROVIDERS: dict[str, tuple[str, object, bool]] = {
 
 
 def fetch_cover_art_chain(
-    artist: str, title: str, providers: list[str]
+    artist: str, title: str, providers: list[str], user_agent: str
 ) -> tuple[bytes | None, str | None, bool]:
     """Try each cover art provider in order.
 
@@ -25,7 +25,7 @@ def fetch_cover_art_chain(
         if i > 0:
             time.sleep(0.3)
         display_name, fn, is_square = entry
-        result = fn(artist, title)  # type: ignore[operator]
+        result = fn(artist, title, user_agent)  # type: ignore[operator]
         if result:
             return (result, display_name, is_square)
     return (None, None, False)

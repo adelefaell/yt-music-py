@@ -4,3 +4,4 @@ downloaded/
 *.egg-info/
 build/
 dist/
+config.toml

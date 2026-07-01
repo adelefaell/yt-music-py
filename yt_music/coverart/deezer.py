@@ -6,10 +6,7 @@ import urllib.request
 from ..ui import Color, cprint
 from .scoring import score_match
 
-USER_AGENT = "yt-music/1.0 (https://github.com/adelfael)"
-
-
-def fetch_cover_deezer(artist: str, title: str) -> bytes | None:
+def fetch_cover_deezer(artist: str, title: str, user_agent: str) -> bytes | None:
     """Fetch cover art from the Deezer API."""
     if not artist or not title:
         return None
@@ -22,7 +19,7 @@ def fetch_cover_deezer(artist: str, title: str) -> bytes | None:
             {"q": f'artist:"{clean_artist}" track:"{clean_title}"'}
         )
         req = urllib.request.Request(
-            f"https://api.deezer.com/search?{query}", headers={"User-Agent": USER_AGENT}
+            f"https://api.deezer.com/search?{query}", headers={"User-Agent": user_agent}
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -46,7 +43,7 @@ def fetch_cover_deezer(artist: str, title: str) -> bytes | None:
             if score < 2.0:
                 continue
             img_req = urllib.request.Request(
-                cover_url, headers={"User-Agent": USER_AGENT}
+                cover_url, headers={"User-Agent": user_agent}
             )
             with urllib.request.urlopen(img_req, timeout=10) as img_resp:
                 return bytes(img_resp.read())

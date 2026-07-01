@@ -6,7 +6,7 @@ import urllib.request
 from ..ui import Color, cprint
 
 
-def fetch_lyrics_lrclib(artist: str, title: str) -> str | None:
+def fetch_lyrics_lrclib(artist: str, title: str, user_agent: str) -> str | None:
     """Fetch lyrics from the LrcLib API."""
     if not artist or not title:
         return None
@@ -27,7 +27,7 @@ def fetch_lyrics_lrclib(artist: str, title: str) -> str | None:
         url = "https://lrclib.net/api/get?" + urllib.parse.urlencode(
             {"artist_name": clean_artist, "track_name": clean_title}
         )
-        req = urllib.request.Request(url, headers={"User-Agent": "yt-music/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": user_agent})
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
 

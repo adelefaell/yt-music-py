@@ -17,6 +17,7 @@ def download_tracks(
     urls: list[str],
     fmt: str,
     dl_path: str,
+    user_agent: str,
     lyrics_providers: list[str],
     cover_providers: list[str],
 ) -> None:
@@ -26,6 +27,7 @@ def download_tracks(
         urls: List of YouTube URLs to download.
         fmt: Audio format (e.g., "mp3", "m4a").
         dl_path: Directory path for downloaded files.
+        user_agent: User-Agent header for API requests.
         lyrics_providers: List of lyrics provider names to use.
         cover_providers: List of cover art provider names to use.
     """
@@ -61,10 +63,10 @@ def download_tracks(
 
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.add_post_processor(
-            LyricsFetcherPP(summary, lyrics_providers), when="pre_process"
+            LyricsFetcherPP(summary, lyrics_providers, user_agent), when="pre_process"
         )
         ydl.add_post_processor(
-            CoverArtFetcherPP(summary, cover_providers), when="pre_process"
+            CoverArtFetcherPP(summary, cover_providers, user_agent), when="pre_process"
         )
         ydl.add_post_processor(CropThumbnailPP(), when="after_move")
         ydl.add_post_processor(EmbedCoverArtPP(), when="after_move")

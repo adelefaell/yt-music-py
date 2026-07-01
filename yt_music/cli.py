@@ -24,16 +24,30 @@ _DEFAULTS: dict[str, Any] = {
 
 def _load_config() -> dict[str, Any]:
     if not _CONFIG_PATH.exists():
-        return {}
+        print(
+            "Error: config.toml not found.\n"
+            "Copy the example config and edit it:\n"
+            "  cp config.toml.example config.toml\n"
+            "Then edit config.toml with your preferred settings."
+        )
+        sys.exit(1)
     with open(_CONFIG_PATH, "rb") as f:
         return tomllib.load(f)
 
 
-def _resolve_settings() -> tuple[str, str, list[str], list[str]]:
+def _resolve_settings() -> tuple[str, str, str, list[str], list[str]]:
     cfg = _load_config()
     general = cfg.get("general", {})
 
     fmt = general.get("format", _DEFAULTS["format"])
+    user_agent = general.get("user_agent")
+    if not user_agent:
+        print(
+            "Error: config.toml must set [general] user_agent.\n"
+            "Example:\n"
+            '  user_agent = "yt-music/1.0 (+https://github.com/YOUR_USERNAME/yt-music-py)"'
+        )
+        sys.exit(1)
 
     raw = general.get("download_path", _DEFAULTS["download_path"])
     dl_path = str(_PROJECT_ROOT / raw) if not os.path.isabs(raw) else raw
@@ -45,12 +59,12 @@ def _resolve_settings() -> tuple[str, str, list[str], list[str]]:
         cfg.get("cover", {}).get("providers") or _DEFAULTS["cover_providers"]
     )
 
-    return fmt, dl_path, lyrics_providers, cover_providers
+    return fmt, dl_path, user_agent, lyrics_providers, cover_providers
 
 
 def cmd_download(args: argparse.Namespace) -> None:
     """Download tracks from YouTube URLs."""
-    fmt, dl_path, lyrics_providers, cover_providers = _resolve_settings()
+    fmt, dl_path, user_agent, lyrics_providers, cover_providers = _resolve_settings()
 
     urls = list(args.urls) if args.urls else []
 
@@ -76,15 +90,16 @@ def cmd_download(args: argparse.Namespace) -> None:
         )
         sys.exit(1)
 
-    download_tracks(urls, fmt, dl_path, lyrics_providers, cover_providers)
+    download_tracks(urls, fmt, dl_path, user_agent, lyrics_providers, cover_providers)
 
 
 def cmd_config() -> None:
     """Print current configuration settings."""
-    fmt, dl_path, lyrics_providers, cover_providers = _resolve_settings()
+    fmt, dl_path, user_agent, lyrics_providers, cover_providers = _resolve_settings()
     cprint("[info] Current configuration:", Color.CYAN)
     cprint(f"  format:          {fmt}", "")
     cprint(f"  download_path:   {dl_path}", "")
+    cprint(f"  user_agent:      {user_agent}", "")
     cprint(f"  lyrics_providers: {lyrics_providers}", "")
     cprint(f"  cover_providers:  {cover_providers}", "")
 
@@ -99,14 +114,20 @@ def cmd_fix(args: argparse.Namespace) -> None:
         )
         sys.exit(1)
 
-    _, dl_path, lyrics_providers, cover_providers = _resolve_settings()
+    _, dl_path, user_agent, lyrics_providers, cover_providers = _resolve_settings()
     path = args.path or dl_path
 
     fix_lyrics = args.lyrics or not args.covers
     fix_covers = args.covers or not args.lyrics
 
     fix_folder(
-        path, fix_lyrics, fix_covers, lyrics_providers, cover_providers, args.force
+        path,
+        fix_lyrics,
+        fix_covers,
+        user_agent,
+        lyrics_providers,
+        cover_providers,
+        args.force,
     )
 
 

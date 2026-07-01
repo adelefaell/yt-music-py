@@ -6,7 +6,7 @@ _PROVIDERS: dict[str, tuple[str, object]] = {
 
 
 def fetch_lyrics_chain(
-    artist: str, title: str, providers: list[str]
+    artist: str, title: str, providers: list[str], user_agent: str
 ) -> tuple[str | None, str | None]:
     """Try each lyrics provider in order. Returns (lyrics, provider_name)."""
     for name in providers:
@@ -14,7 +14,7 @@ def fetch_lyrics_chain(
         if not entry:
             continue
         display_name, fn = entry
-        lyrics = fn(artist, title)  # type: ignore[operator]
+        lyrics = fn(artist, title, user_agent)  # type: ignore[operator]
         if lyrics:
             return (lyrics, display_name)
     return (None, None)

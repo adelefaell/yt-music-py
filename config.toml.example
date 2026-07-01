@@ -1,6 +1,7 @@
 [general]
 format = "mp3"
 download_path = "./downloaded"
+user_agent = "yt-music/1.0 (https://github.com/YOUR_USERNAME)"
 
 [lyrics]
 providers = ["lrclib"]

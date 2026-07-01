@@ -59,6 +59,7 @@ def fix_folder(
     path: str,
     fix_lyrics: bool,
     fix_covers: bool,
+    user_agent: str,
     lyrics_providers: list[str],
     cover_providers: list[str],
     force: bool,
@@ -98,7 +99,9 @@ def fix_folder(
             if has_lyrics(filepath) and not force:
                 cprint("  [lyrics] \u2298 Already has lyrics", Color.YELLOW)
             else:
-                lyrics, _ = fetch_lyrics_chain(artist, title, lyrics_providers)
+                lyrics, _ = fetch_lyrics_chain(
+                    artist, title, lyrics_providers, user_agent
+                )
                 if lyrics:
                     if embed_lyrics(filepath, lyrics):
                         stats["lyrics"] += 1
@@ -110,7 +113,7 @@ def fix_folder(
                 cprint("  [cover] \u2298 Already has artwork", Color.YELLOW)
             else:
                 image_bytes, _, is_square = fetch_cover_art_chain(
-                    artist, title, cover_providers
+                    artist, title, cover_providers, user_agent
                 )
                 if image_bytes:
                     if embed_cover(filepath, image_bytes, is_square):

@@ -14,16 +14,24 @@ from .embedders import embed_cover, embed_lyrics
 class LyricsFetcherPP(PostProcessor):
     """Fetch lyrics for a track and store them in the info dict."""
 
-    def __init__(self, summary: Any = None, providers: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        summary: Any = None,
+        providers: list[str] | None = None,
+        user_agent: str = "",
+    ) -> None:
         super().__init__()
         self.summary = summary
         self.providers: list[str] = providers or []
+        self.user_agent = user_agent
 
     def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
         artist = (info.get("artist") or info.get("uploader") or "").strip()
-        title = (info.get("title") or "").strip()
+        title = (info.get("track") or info.get("title") or "").strip()
 
-        lyrics, provider = fetch_lyrics_chain(artist, title, self.providers)
+        lyrics, provider = fetch_lyrics_chain(
+            artist, title, self.providers, self.user_agent
+        )
         if lyrics:
             info["meta_lyrics"] = lyrics
             cprint(
@@ -54,17 +62,23 @@ class EmbedLyricsPP(PostProcessor):
 class CoverArtFetcherPP(PostProcessor):
     """Fetch external cover art for a track and store it in the info dict."""
 
-    def __init__(self, summary: Any = None, providers: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        summary: Any = None,
+        providers: list[str] | None = None,
+        user_agent: str = "",
+    ) -> None:
         super().__init__()
         self.summary = summary
         self.providers: list[str] = providers or []
+        self.user_agent = user_agent
 
     def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
         artist = (info.get("artist") or info.get("uploader") or "").strip()
-        title = (info.get("title") or "").strip()
+        title = (info.get("track") or info.get("title") or "").strip()
 
         image_bytes, provider, is_square = fetch_cover_art_chain(
-            artist, title, self.providers
+            artist, title, self.providers, self.user_agent
         )
         if image_bytes:
             fd, tmp_path = tempfile.mkstemp(suffix=".jpg", prefix="ytmusic_cover_")
