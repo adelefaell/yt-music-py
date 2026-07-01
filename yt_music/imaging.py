@@ -7,7 +7,8 @@ from .ui import Color, cprint
 TARGET_SIZE = 640
 
 
-def resize_square(filepath, size=TARGET_SIZE):
+def resize_square(filepath: str, size: int = TARGET_SIZE) -> bool:
+    """Resize an image to a square of the given size using ffmpeg."""
     if not filepath or not os.path.exists(filepath):
         return False
 
@@ -33,7 +34,8 @@ def resize_square(filepath, size=TARGET_SIZE):
         return False
 
 
-def crop_to_square(filepath):
+def crop_to_square(filepath: str) -> bool:
+    """Crop and scale an image to a square thumbnail using ffmpeg."""
     if not filepath or not os.path.exists(filepath):
         return False
 
@@ -78,10 +80,10 @@ def crop_to_square(filepath):
 
         temp_file = filepath + ".tmp.jpg"
         cmd = ["ffmpeg", "-y", "-i", filepath, "-vf", crop_filter, temp_file]
-        result = subprocess.run(cmd, capture_output=True, timeout=10)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
 
         if result.returncode != 0:
-            stderr = result.stderr.decode("utf-8", errors="replace").strip()
+            stderr = result.stderr.strip()
             cprint(
                 f"[thumbnail] ffmpeg error: {stderr}",
                 Color.YELLOW,

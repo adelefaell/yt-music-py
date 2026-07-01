@@ -18,6 +18,7 @@ MP4_TAG_TITLE = "\xa9nam"
 
 
 def extract_tags(filepath: str) -> tuple[str, str]:
+    """Extract artist and title tags from an audio file."""
     try:
         audio = mutagen.File(filepath)
         if audio is None:
@@ -58,10 +59,11 @@ def fix_folder(
     path: str,
     fix_lyrics: bool,
     fix_covers: bool,
-    lyrics_providers: list | None,
-    cover_providers: list | None,
+    lyrics_providers: list[str],
+    cover_providers: list[str],
     force: bool,
 ) -> None:
+    """Scan a folder for audio files and fix missing lyrics or cover art."""
     if not os.path.isdir(path):
         cprint(f"[fix] \u2717 Path not found: {path}", Color.RED)
         return

@@ -5,38 +5,31 @@ import sys
 import tomllib
 from importlib.metadata import version
 from pathlib import Path
+from typing import Any
 
-import yt_dlp
-
+from .downloader import download_tracks
 from .fixer import fix_folder
-from .postprocessors import (
-    CoverArtFetcherPP,
-    CropThumbnailPP,
-    EmbedCoverArtPP,
-    EmbedLyricsPP,
-    LyricsFetcherPP,
-)
-from .ui import Color, ProgressTracker, Summary, cprint
+from .ui import Color, cprint
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _CONFIG_PATH = _PROJECT_ROOT / "config.toml"
 
-_DEFAULTS = {
+_DEFAULTS: dict[str, Any] = {
     "format": "mp3",
     "download_path": str(_PROJECT_ROOT / "downloaded"),
-    "lyrics_providers": None,
-    "cover_providers": None,
+    "lyrics_providers": ["lrclib"],
+    "cover_providers": ["deezer", "musicbrainz", "discogs"],
 }
 
 
-def _load_config():
+def _load_config() -> dict[str, Any]:
     if not _CONFIG_PATH.exists():
         return {}
     with open(_CONFIG_PATH, "rb") as f:
         return tomllib.load(f)
 
 
-def _resolve_settings():
+def _resolve_settings() -> tuple[str, str, list[str], list[str]]:
     cfg = _load_config()
     general = cfg.get("general", {})
 
@@ -55,7 +48,8 @@ def _resolve_settings():
     return fmt, dl_path, lyrics_providers, cover_providers
 
 
-def cmd_download(args):
+def cmd_download(args: argparse.Namespace) -> None:
+    """Download tracks from YouTube URLs."""
     fmt, dl_path, lyrics_providers, cover_providers = _resolve_settings()
 
     urls = list(args.urls) if args.urls else []
@@ -82,78 +76,11 @@ def cmd_download(args):
         )
         sys.exit(1)
 
-    os.makedirs(dl_path, exist_ok=True)
-
-    have_mutagen = importlib.util.find_spec("mutagen") is not None
-    if not have_mutagen:
-        cprint(
-            "[warning] python-mutagen is missing. Lyrics embedding will be skipped.",
-            Color.YELLOW,
-        )
-
-    summary = Summary()
-    progress = ProgressTracker(len(urls))
-
-    pps = [
-        {"key": "FFmpegExtractAudio", "preferredcodec": fmt},
-        {"key": "FFmpegMetadata"},
-        {"key": "FFmpegThumbnailsConvertor", "format": "jpg"},
-    ]
-
-    opts = {
-        "format": "bestaudio/best",
-        "outtmpl": os.path.join(dl_path, "%(title)s.%(ext)s"),
-        "writethumbnail": True,
-        "postprocessors": pps,
-        "ignoreerrors": True,
-        "noplaylist": True,
-        "progress_hooks": [progress.update],
-        "quiet": True,
-        "no_warnings": True,
-    }
-
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.add_post_processor(
-            LyricsFetcherPP(summary, lyrics_providers), when="pre_process"
-        )
-        ydl.add_post_processor(
-            CoverArtFetcherPP(summary, cover_providers), when="pre_process"
-        )
-        ydl.add_post_processor(CropThumbnailPP(), when="after_move")
-        ydl.add_post_processor(EmbedCoverArtPP(), when="after_move")
-        if have_mutagen:
-            ydl.add_post_processor(EmbedLyricsPP(), when="after_move")
-
-        for url in urls:
-            progress.next_track(url)
-
-            try:
-                info = ydl.extract_info(url, download=False, process=False)
-                if info:
-                    title = info.get("title", "Unknown")
-                    expected_file = os.path.join(dl_path, f"{title}.{fmt}")
-                    if os.path.exists(expected_file):
-                        cprint(f"  ⊘ Skipped (already exists): {title}", Color.YELLOW)
-                        summary.add_skipped(url, "duplicate")
-                        continue
-
-                    try:
-                        ydl.download([url])
-                        summary.add_success(url, title)
-                    except Exception as e:
-                        cprint(f"  ✗ Failed: {e}", Color.RED)
-                        summary.add_failed(url, str(e))
-                else:
-                    cprint("  ✗ Could not extract info", Color.RED)
-                    summary.add_failed(url, "Could not extract info")
-            except Exception as e:
-                cprint(f"  ✗ Error: {e}", Color.RED)
-                summary.add_failed(url, str(e))
-
-    summary.print_summary()
+    download_tracks(urls, fmt, dl_path, lyrics_providers, cover_providers)
 
 
-def cmd_config():
+def cmd_config() -> None:
+    """Print current configuration settings."""
     fmt, dl_path, lyrics_providers, cover_providers = _resolve_settings()
     cprint("[info] Current configuration:", Color.CYAN)
     cprint(f"  format:          {fmt}", "")
@@ -162,7 +89,8 @@ def cmd_config():
     cprint(f"  cover_providers:  {cover_providers}", "")
 
 
-def cmd_fix(args):
+def cmd_fix(args: argparse.Namespace) -> None:
+    """Fix missing lyrics and cover art for downloaded tracks."""
     if importlib.util.find_spec("mutagen") is None:
         cprint(
             "[fix] \u26a0 python-mutagen is required."
@@ -182,7 +110,8 @@ def cmd_fix(args):
     )
 
 
-def main():
+def main() -> None:
+    """Entry point for the yt-music CLI."""
     parser = argparse.ArgumentParser(
         prog="yt-music", description="YouTube Music downloader"
     )

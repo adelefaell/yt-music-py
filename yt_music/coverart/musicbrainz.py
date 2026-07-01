@@ -4,48 +4,13 @@ import urllib.parse
 import urllib.request
 
 from ..ui import Color, cprint
+from .scoring import score_match
 
 USER_AGENT = "yt-music/1.0 (https://github.com/adelfael)"
 
 
-def _normalize(s):
-    s = re.sub(r"\s*\([^)]*\)\s*", " ", s)
-    s = re.sub(r"\s*\[[^\]]*\]\s*", " ", s)
-    s = re.sub(r"\s*- Topic\s*", " ", s)
-    s = re.sub(r"\s*feat\.?\s.*", "", s, flags=re.IGNORECASE)
-    s = re.sub(r"\s*ft\.?\s.*", "", s, flags=re.IGNORECASE)
-    return re.sub(r"\s+", " ", s).strip().lower()
-
-
-def _score_match(rec_artist, rec_title, search_artist, search_title):
-    norm_artist = _normalize(rec_artist)
-    norm_title = _normalize(rec_title)
-    search_norm_artist = _normalize(search_artist)
-    search_norm_title = _normalize(search_title)
-
-    score = 0
-    if search_norm_title in norm_title or norm_title in search_norm_title:
-        score += 2
-    if search_norm_artist in norm_artist or norm_artist in search_norm_artist:
-        score += 2
-
-    artist_words = set(search_norm_artist.split())
-    title_words = set(search_norm_title.split())
-    rec_artist_words = set(norm_artist.split())
-    rec_title_words = set(norm_title.split())
-
-    artist_overlap = len(artist_words & rec_artist_words)
-    title_overlap = len(title_words & rec_title_words)
-
-    if artist_words:
-        score += artist_overlap / len(artist_words)
-    if title_words:
-        score += title_overlap / len(title_words)
-
-    return score
-
-
-def fetch_cover_musicbrainz(artist, title):
+def fetch_cover_musicbrainz(artist: str, title: str) -> bytes | None:
+    """Fetch cover art via MusicBrainz and the Cover Art Archive."""
     if not artist or not title:
         return None
     try:
@@ -69,6 +34,7 @@ def fetch_cover_musicbrainz(artist, title):
 
         recordings = data.get("recordings", [])
         scored_releases = []
+        seen_mbids: set[str] = set()
 
         for rec in recordings:
             rec_title = rec.get("title", "")
@@ -77,26 +43,42 @@ def fetch_cover_musicbrainz(artist, title):
             if artist_credit:
                 rec_artist = artist_credit[0].get("artist", {}).get("name", "")
 
-            score = _score_match(rec_artist, rec_title, artist, title)
+            score = score_match(rec_artist, rec_title, artist, title)
             if score < 2.0:
                 continue
 
             for release in rec.get("releases", []):
                 mbid = release.get("id")
-                if mbid:
-                    scored_releases.append((score, mbid))
+                if not mbid or mbid in seen_mbids:
+                    continue
+                seen_mbids.add(mbid)
+
+                release_group = release.get("release-group", {})
+                primary_type = release_group.get("primary-type", "")
+                secondary_types = release_group.get("secondary-types", [])
+
+                release_score = score
+                if primary_type != "Album":
+                    release_score -= 0.5
+                if any(
+                    t in secondary_types for t in ("Compilation", "Reissue", "Remaster")
+                ):
+                    release_score -= 1.0
+
+                if release_score >= 2.0:
+                    scored_releases.append((release_score, mbid))
 
         scored_releases.sort(key=lambda x: x[0], reverse=True)
 
-        for score, mbid in scored_releases:
-            cover_url = f"https://coverartarchive.org/release/{mbid}/front-500"
+        for _score, mbid in scored_releases:
+            cover_url = f"https://coverartarchive.org/release/{mbid}/front-1200"
             img_req = urllib.request.Request(
                 cover_url, headers={"User-Agent": USER_AGENT}
             )
             try:
                 with urllib.request.urlopen(img_req, timeout=10) as img_resp:
                     if img_resp.status == 200:
-                        return img_resp.read()
+                        return bytes(img_resp.read())
             except Exception:
                 continue
     except Exception as e:

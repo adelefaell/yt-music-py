@@ -6,4 +6,4 @@ download_path = "./downloaded"
 providers = ["lrclib"]
 
 [cover]
-providers = ["musicbrainz", "deezer", "discogs"]
+providers = ["deezer", "musicbrainz", "discogs"]

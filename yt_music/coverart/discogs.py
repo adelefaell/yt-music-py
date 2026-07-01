@@ -4,46 +4,13 @@ import urllib.parse
 import urllib.request
 
 from ..ui import Color, cprint
+from .scoring import score_match
 
 USER_AGENT = "yt-music/1.0 (https://github.com/adelfael)"
 
 
-def _normalize(s):
-    s = re.sub(r"\s*\([^)]*\)\s*", " ", s)
-    s = re.sub(r"\s*\[[^\]]*\]\s*", " ", s)
-    s = re.sub(r"\s*- Topic\s*", " ", s)
-    s = re.sub(r"\s*feat\.?\s.*", "", s, flags=re.IGNORECASE)
-    s = re.sub(r"\s*ft\.?\s.*", "", s, flags=re.IGNORECASE)
-    return re.sub(r"\s+", " ", s).strip().lower()
-
-
-def _score_match(result_title, search_artist, search_title):
-    norm_result = _normalize(result_title)
-    search_norm_artist = _normalize(search_artist)
-    search_norm_title = _normalize(search_title)
-
-    score = 0
-    if search_norm_title in norm_result:
-        score += 2
-    if search_norm_artist in norm_result:
-        score += 2
-
-    result_words = set(norm_result.split())
-    artist_words = set(search_norm_artist.split())
-    title_words = set(search_norm_title.split())
-
-    artist_overlap = len(artist_words & result_words)
-    title_overlap = len(title_words & result_words)
-
-    if artist_words:
-        score += artist_overlap / len(artist_words)
-    if title_words:
-        score += title_overlap / len(title_words)
-
-    return score
-
-
-def fetch_cover_discogs(artist, title):
+def fetch_cover_discogs(artist: str, title: str) -> bytes | None:
+    """Fetch cover art from the Discogs API."""
     if not artist or not title:
         return None
     try:
@@ -68,21 +35,29 @@ def fetch_cover_discogs(artist, title):
         scored = []
         for result in results[:10]:
             result_title = result.get("title", "")
-            score = _score_match(result_title, artist, title)
+            parts = result_title.split(" - ", 1)
+            result_artist = parts[0] if parts else ""
+            result_album = parts[1] if len(parts) > 1 else ""
+
+            score = score_match(result_artist, result_album, artist, title)
+
+            formats = result.get("format", [])
+            format_str = " ".join(formats).lower()
+            if any(t in format_str for t in ("compilation", "reissue", "remaster")):
+                score -= 1.0
+
             cover_url = result.get("cover_image")
-            if cover_url:
+            if cover_url and score >= 2.0:
                 scored.append((score, cover_url))
 
         scored.sort(key=lambda x: x[0], reverse=True)
 
-        for score, cover_url in scored:
-            if score < 2.0:
-                continue
+        for _score, cover_url in scored:
             img_req = urllib.request.Request(
                 cover_url, headers={"User-Agent": USER_AGENT}
             )
             with urllib.request.urlopen(img_req, timeout=10) as img_resp:
-                return img_resp.read()
+                return bytes(img_resp.read())
 
     except Exception as e:
         cprint(f"[cover] Discogs error: {e}", Color.GRAY)

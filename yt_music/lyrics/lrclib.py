@@ -6,7 +6,8 @@ import urllib.request
 from ..ui import Color, cprint
 
 
-def fetch_lyrics_lrclib(artist, title):
+def fetch_lyrics_lrclib(artist: str, title: str) -> str | None:
+    """Fetch lyrics from the LrcLib API."""
     if not artist or not title:
         return None
 

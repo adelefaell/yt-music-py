@@ -1,5 +1,6 @@
 import sys
 from collections import Counter
+from typing import Any
 
 
 class Color:
@@ -14,11 +15,13 @@ class Color:
     GRAY = "\033[90m"
 
 
-def cprint(msg, color=""):
+def cprint(msg: str, color: str = "") -> None:
+    """Print a message with ANSI color codes."""
     print(f"{color}{msg}{Color.RESET}")
 
 
-def format_bytes(bytes_val):
+def format_bytes(bytes_val: float) -> str:
+    """Format byte count into a human-readable string."""
     for unit in ["B", "KB", "MB", "GB"]:
         if bytes_val < 1024.0:
             return f"{bytes_val:.1f} {unit}"
@@ -26,7 +29,8 @@ def format_bytes(bytes_val):
     return f"{bytes_val:.1f} TB"
 
 
-def format_time(seconds):
+def format_time(seconds: float | None) -> str:
+    """Format seconds into MM:SS string."""
     if seconds is None or seconds < 0:
         return "--:--"
     mins = int(seconds // 60)
@@ -35,18 +39,21 @@ def format_time(seconds):
 
 
 class ProgressTracker:
-    def __init__(self, total_tracks):
+    """Track and display download progress for multiple tracks."""
+
+    def __init__(self, total_tracks: int) -> None:
         self.total_tracks = total_tracks
         self.current_track = 0
         self.downloaded_bytes = 0
         self.total_bytes = 0
-        self.speed = 0
-        self.eta = 0
+        self.speed: float = 0
+        self.eta: float = 0
         self.status = "waiting"
         self.filename = ""
         self.last_print_len = 0
 
-    def update(self, d):
+    def update(self, d: dict[str, Any]) -> None:
+        """Update progress from yt-dlp progress hook."""
         if d["status"] == "downloading":
             self.status = "downloading"
             self.filename = d.get("filename", "").split("/")[-1]
@@ -62,7 +69,7 @@ class ProgressTracker:
                 f"  ✓ Downloaded: {d.get('filename', '').split('/')[-1]}", Color.GREEN
             )
 
-    def _print_progress(self):
+    def _print_progress(self) -> None:
         if self.total_bytes > 0:
             pct = self.downloaded_bytes / self.total_bytes
             bar_len = 30
@@ -84,12 +91,13 @@ class ProgressTracker:
             sys.stdout.flush()
             self.last_print_len = len(line)
 
-    def _clear_line(self):
+    def _clear_line(self) -> None:
         sys.stdout.write("\r" + " " * (self.last_print_len + 10) + "\r")
         sys.stdout.flush()
         self.last_print_len = 0
 
-    def next_track(self, url):
+    def next_track(self, url: str) -> None:
+        """Advance to the next track and print the track header."""
         self.current_track += 1
         self.status = "waiting"
         cprint(
@@ -101,37 +109,47 @@ class ProgressTracker:
 
 
 class Summary:
-    def __init__(self):
-        self.successful = []
-        self.skipped = []
-        self.failed = []
-        self.lyrics_found = []
-        self.lyrics_missing = []
-        self.cover_source = {}
-        self.lyrics_source = {}
+    """Collect and print download session summary."""
 
-    def add_success(self, url, title):
+    def __init__(self) -> None:
+        self.successful: list[tuple[str, str]] = []
+        self.skipped: list[tuple[str, str]] = []
+        self.failed: list[tuple[str, str]] = []
+        self.lyrics_found: list[str] = []
+        self.lyrics_missing: list[str] = []
+        self.cover_source: dict[str, str] = {}
+        self.lyrics_source: dict[str, str] = {}
+
+    def add_success(self, url: str, title: str) -> None:
+        """Record a successful download."""
         self.successful.append((url, title))
 
-    def add_skipped(self, url, reason):
+    def add_skipped(self, url: str, reason: str) -> None:
+        """Record a skipped download."""
         self.skipped.append((url, reason))
 
-    def add_failed(self, url, error):
+    def add_failed(self, url: str, error: str) -> None:
+        """Record a failed download."""
         self.failed.append((url, error))
 
-    def add_lyrics_found(self, title):
+    def add_lyrics_found(self, title: str) -> None:
+        """Record that lyrics were found for a track."""
         self.lyrics_found.append(title)
 
-    def add_lyrics_missing(self, title):
+    def add_lyrics_missing(self, title: str) -> None:
+        """Record that lyrics were not found for a track."""
         self.lyrics_missing.append(title)
 
-    def add_cover_source(self, title, provider):
+    def add_cover_source(self, title: str, provider: str) -> None:
+        """Record the cover art source for a track."""
         self.cover_source[title] = provider
 
-    def add_lyrics_source(self, title, provider):
+    def add_lyrics_source(self, title: str, provider: str) -> None:
+        """Record the lyrics source for a track."""
         self.lyrics_source[title] = provider
 
-    def print_summary(self):
+    def print_summary(self) -> None:
+        """Print the full download session summary."""
         print(f"\n{Color.BOLD}{'=' * 60}{Color.RESET}")
         cprint("DOWNLOAD SUMMARY", Color.BOLD)
         print(f"{Color.BOLD}{'=' * 60}{Color.RESET}")
@@ -140,7 +158,7 @@ class Summary:
 
         if self.successful:
             cprint(f"\n✓ Downloaded: {len(self.successful)}/{total}", Color.GREEN)
-            for url, title in self.successful:
+            for _url, title in self.successful:
                 print(f"  • {title}")
 
         if self.skipped:
