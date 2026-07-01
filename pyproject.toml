@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yt-music"
-version = "0.0.1"
+version = "0.0.2"
 description = "YouTube Music downloader with lyrics & cover art"
 requires-python = ">=3.11"
 dependencies = ["yt-dlp", "mutagen"]
@@ -14,3 +14,20 @@ yt-music = "yt_music.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["yt_music*"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.20",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

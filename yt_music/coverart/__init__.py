@@ -1,16 +1,16 @@
 import time
 
-from .musicbrainz import fetch_cover_musicbrainz
 from .deezer import fetch_cover_deezer
 from .discogs import fetch_cover_discogs
+from .musicbrainz import fetch_cover_musicbrainz
 
 _PROVIDERS = {
-    'musicbrainz': ('MusicBrainz', fetch_cover_musicbrainz, False),
-    'deezer': ('Deezer', fetch_cover_deezer, True),
-    'discogs': ('Discogs', fetch_cover_discogs, False),
+    "musicbrainz": ("MusicBrainz", fetch_cover_musicbrainz, False),
+    "deezer": ("Deezer", fetch_cover_deezer, True),
+    "discogs": ("Discogs", fetch_cover_discogs, False),
 }
 
-DEFAULT_PROVIDERS = ['musicbrainz', 'deezer', 'discogs']
+DEFAULT_PROVIDERS = ["musicbrainz", "deezer", "discogs"]
 
 
 def fetch_cover_art_chain(artist, title, providers=None):

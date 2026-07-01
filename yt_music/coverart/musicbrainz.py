@@ -1,20 +1,20 @@
 import json
 import re
-import urllib.request
 import urllib.parse
+import urllib.request
 
-from ..ui import cprint, Color
+from ..ui import Color, cprint
 
-USER_AGENT = 'yt-music/1.0 (https://github.com/adelfael)'
+USER_AGENT = "yt-music/1.0 (https://github.com/adelfael)"
 
 
 def _normalize(s):
-    s = re.sub(r'\s*\([^)]*\)\s*', ' ', s)
-    s = re.sub(r'\s*\[[^\]]*\]\s*', ' ', s)
-    s = re.sub(r'\s*- Topic\s*', ' ', s)
-    s = re.sub(r'\s*feat\.?\s.*', '', s, flags=re.IGNORECASE)
-    s = re.sub(r'\s*ft\.?\s.*', '', s, flags=re.IGNORECASE)
-    return re.sub(r'\s+', ' ', s).strip().lower()
+    s = re.sub(r"\s*\([^)]*\)\s*", " ", s)
+    s = re.sub(r"\s*\[[^\]]*\]\s*", " ", s)
+    s = re.sub(r"\s*- Topic\s*", " ", s)
+    s = re.sub(r"\s*feat\.?\s.*", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"\s*ft\.?\s.*", "", s, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", s).strip().lower()
 
 
 def _score_match(rec_artist, rec_title, search_artist, search_title):
@@ -49,46 +49,50 @@ def fetch_cover_musicbrainz(artist, title):
     if not artist or not title:
         return None
     try:
-        clean_title = re.sub(r'\s*\([^)]*\)\s*$', '', title)
-        clean_title = re.sub(r'\s*\[[^\]]*\]\s*$', '', clean_title).strip()
-        clean_artist = re.sub(r'\s*- Topic\s*$', '', artist).strip()
+        clean_title = re.sub(r"\s*\([^)]*\)\s*$", "", title)
+        clean_title = re.sub(r"\s*\[[^\]]*\]\s*$", "", clean_title).strip()
+        clean_artist = re.sub(r"\s*- Topic\s*$", "", artist).strip()
 
-        query = urllib.parse.urlencode({
-            'query': f'recording:"{clean_title}" AND artist:"{clean_artist}"',
-            'fmt': 'json',
-            'limit': '10'
-        })
+        query = urllib.parse.urlencode(
+            {
+                "query": f'recording:"{clean_title}" AND artist:"{clean_artist}"',
+                "fmt": "json",
+                "limit": "10",
+            }
+        )
         req = urllib.request.Request(
-            f'https://musicbrainz.org/ws/2/recording/?{query}',
-            headers={'User-Agent': USER_AGENT}
+            f"https://musicbrainz.org/ws/2/recording/?{query}",
+            headers={"User-Agent": USER_AGENT},
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
+            data = json.loads(resp.read().decode("utf-8"))
 
-        recordings = data.get('recordings', [])
+        recordings = data.get("recordings", [])
         scored_releases = []
 
         for rec in recordings:
-            rec_title = rec.get('title', '')
-            rec_artist = ''
-            artist_credit = rec.get('artist-credit', [])
+            rec_title = rec.get("title", "")
+            rec_artist = ""
+            artist_credit = rec.get("artist-credit", [])
             if artist_credit:
-                rec_artist = artist_credit[0].get('artist', {}).get('name', '')
+                rec_artist = artist_credit[0].get("artist", {}).get("name", "")
 
             score = _score_match(rec_artist, rec_title, artist, title)
             if score < 2.0:
                 continue
 
-            for release in rec.get('releases', []):
-                mbid = release.get('id')
+            for release in rec.get("releases", []):
+                mbid = release.get("id")
                 if mbid:
                     scored_releases.append((score, mbid))
 
         scored_releases.sort(key=lambda x: x[0], reverse=True)
 
         for score, mbid in scored_releases:
-            cover_url = f'https://coverartarchive.org/release/{mbid}/front-500'
-            img_req = urllib.request.Request(cover_url, headers={'User-Agent': USER_AGENT})
+            cover_url = f"https://coverartarchive.org/release/{mbid}/front-500"
+            img_req = urllib.request.Request(
+                cover_url, headers={"User-Agent": USER_AGENT}
+            )
             try:
                 with urllib.request.urlopen(img_req, timeout=10) as img_resp:
                     if img_resp.status == 200:

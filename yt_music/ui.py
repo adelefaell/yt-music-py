@@ -3,23 +3,23 @@ from collections import Counter
 
 
 class Color:
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN = '\033[36m'
-    GRAY = '\033[90m'
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
+    MAGENTA = "\033[35m"
+    CYAN = "\033[36m"
+    GRAY = "\033[90m"
 
 
-def cprint(msg, color=''):
+def cprint(msg, color=""):
     print(f"{color}{msg}{Color.RESET}")
 
 
 def format_bytes(bytes_val):
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if bytes_val < 1024.0:
             return f"{bytes_val:.1f} {unit}"
         bytes_val /= 1024.0
@@ -28,7 +28,7 @@ def format_bytes(bytes_val):
 
 def format_time(seconds):
     if seconds is None or seconds < 0:
-        return '--:--'
+        return "--:--"
     mins = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{mins:02d}:{secs:02d}"
@@ -42,50 +42,62 @@ class ProgressTracker:
         self.total_bytes = 0
         self.speed = 0
         self.eta = 0
-        self.status = 'waiting'
-        self.filename = ''
+        self.status = "waiting"
+        self.filename = ""
         self.last_print_len = 0
 
     def update(self, d):
-        if d['status'] == 'downloading':
-            self.status = 'downloading'
-            self.filename = d.get('filename', '').split('/')[-1]
-            self.downloaded_bytes = d.get('downloaded_bytes', 0)
-            self.total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
-            self.speed = d.get('speed', 0) or 0
-            self.eta = d.get('eta', 0) or 0
+        if d["status"] == "downloading":
+            self.status = "downloading"
+            self.filename = d.get("filename", "").split("/")[-1]
+            self.downloaded_bytes = d.get("downloaded_bytes", 0)
+            self.total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate", 0)
+            self.speed = d.get("speed", 0) or 0
+            self.eta = d.get("eta", 0) or 0
             self._print_progress()
-        elif d['status'] == 'finished':
-            self.status = 'finished'
+        elif d["status"] == "finished":
+            self.status = "finished"
             self._clear_line()
-            cprint(f"  ✓ Downloaded: {d.get('filename', '').split('/')[-1]}", Color.GREEN)
+            cprint(
+                f"  ✓ Downloaded: {d.get('filename', '').split('/')[-1]}", Color.GREEN
+            )
 
     def _print_progress(self):
         if self.total_bytes > 0:
             pct = self.downloaded_bytes / self.total_bytes
             bar_len = 30
             filled = int(bar_len * pct)
-            bar = '█' * filled + '░' * (bar_len - filled)
-            pct_str = f"{pct*100:5.1f}%"
-            speed_str = f"{format_bytes(self.speed)}/s" if self.speed else '-- B/s'
+            bar = "█" * filled + "░" * (bar_len - filled)
+            pct_str = f"{pct * 100:5.1f}%"
+            speed_str = f"{format_bytes(self.speed)}/s" if self.speed else "-- B/s"
             eta_str = format_time(self.eta)
 
-            line = f"\r  {Color.CYAN}[{bar}]{Color.RESET} {pct_str} {format_bytes(self.downloaded_bytes)}/{format_bytes(self.total_bytes)} @ {speed_str} ETA {eta_str}"
+            dl = format_bytes(self.downloaded_bytes)
+            tot = format_bytes(self.total_bytes)
+            line = (
+                f"\r  {Color.CYAN}[{bar}]{Color.RESET}"
+                f" {pct_str} {dl}/{tot} @ {speed_str} ETA {eta_str}"
+            )
 
             padding = max(0, self.last_print_len - len(line))
-            sys.stdout.write(line + ' ' * padding)
+            sys.stdout.write(line + " " * padding)
             sys.stdout.flush()
             self.last_print_len = len(line)
 
     def _clear_line(self):
-        sys.stdout.write('\r' + ' ' * (self.last_print_len + 10) + '\r')
+        sys.stdout.write("\r" + " " * (self.last_print_len + 10) + "\r")
         sys.stdout.flush()
         self.last_print_len = 0
 
     def next_track(self, url):
         self.current_track += 1
-        self.status = 'waiting'
-        cprint(f"\n{Color.BOLD}[{self.current_track}/{self.total_tracks}]{Color.RESET} {url}", Color.BLUE)
+        self.status = "waiting"
+        cprint(
+            f"\n{Color.BOLD}"
+            f"[{self.current_track}/{self.total_tracks}]"
+            f"{Color.RESET} {url}",
+            Color.BLUE,
+        )
 
 
 class Summary:
@@ -120,9 +132,9 @@ class Summary:
         self.lyrics_source[title] = provider
 
     def print_summary(self):
-        print(f"\n{Color.BOLD}{'='*60}{Color.RESET}")
+        print(f"\n{Color.BOLD}{'=' * 60}{Color.RESET}")
         cprint("DOWNLOAD SUMMARY", Color.BOLD)
-        print(f"{Color.BOLD}{'='*60}{Color.RESET}")
+        print(f"{Color.BOLD}{'=' * 60}{Color.RESET}")
 
         total = len(self.successful) + len(self.skipped) + len(self.failed)
 
@@ -144,7 +156,11 @@ class Summary:
 
         if self.lyrics_found or self.lyrics_missing:
             print()
-            cprint(f"Lyrics: {len(self.lyrics_found)} found, {len(self.lyrics_missing)} missing", Color.MAGENTA)
+            cprint(
+                f"Lyrics: {len(self.lyrics_found)} found,"
+                f" {len(self.lyrics_missing)} missing",
+                Color.MAGENTA,
+            )
 
         if self.cover_source:
             counts = Counter(self.cover_source.values())
@@ -156,4 +172,4 @@ class Summary:
             parts = [f"{name} {count}" for name, count in counts.most_common()]
             cprint(f"Lyrics sources: {', '.join(parts)}", Color.MAGENTA)
 
-        print(f"{Color.BOLD}{'='*60}{Color.RESET}\n")
+        print(f"{Color.BOLD}{'=' * 60}{Color.RESET}\n")

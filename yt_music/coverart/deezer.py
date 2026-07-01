@@ -1,20 +1,20 @@
 import json
 import re
-import urllib.request
 import urllib.parse
+import urllib.request
 
-from ..ui import cprint, Color
+from ..ui import Color, cprint
 
-USER_AGENT = 'yt-music/1.0 (https://github.com/adelfael)'
+USER_AGENT = "yt-music/1.0 (https://github.com/adelfael)"
 
 
 def _normalize(s):
-    s = re.sub(r'\s*\([^)]*\)\s*', ' ', s)
-    s = re.sub(r'\s*\[[^\]]*\]\s*', ' ', s)
-    s = re.sub(r'\s*- Topic\s*', ' ', s)
-    s = re.sub(r'\s*feat\.?\s.*', '', s, flags=re.IGNORECASE)
-    s = re.sub(r'\s*ft\.?\s.*', '', s, flags=re.IGNORECASE)
-    return re.sub(r'\s+', ' ', s).strip().lower()
+    s = re.sub(r"\s*\([^)]*\)\s*", " ", s)
+    s = re.sub(r"\s*\[[^\]]*\]\s*", " ", s)
+    s = re.sub(r"\s*- Topic\s*", " ", s)
+    s = re.sub(r"\s*feat\.?\s.*", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"\s*ft\.?\s.*", "", s, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", s).strip().lower()
 
 
 def _score_match(track_artist, track_title, search_artist, search_title):
@@ -49,30 +49,29 @@ def fetch_cover_deezer(artist, title):
     if not artist or not title:
         return None
     try:
-        clean_title = re.sub(r'\s*\([^)]*\)\s*$', '', title)
-        clean_title = re.sub(r'\s*\[[^\]]*\]\s*$', '', clean_title).strip()
-        clean_artist = re.sub(r'\s*- Topic\s*$', '', artist).strip()
+        clean_title = re.sub(r"\s*\([^)]*\)\s*$", "", title)
+        clean_title = re.sub(r"\s*\[[^\]]*\]\s*$", "", clean_title).strip()
+        clean_artist = re.sub(r"\s*- Topic\s*$", "", artist).strip()
 
-        query = urllib.parse.urlencode({
-            'q': f'artist:"{clean_artist}" track:"{clean_title}"'
-        })
+        query = urllib.parse.urlencode(
+            {"q": f'artist:"{clean_artist}" track:"{clean_title}"'}
+        )
         req = urllib.request.Request(
-            f'https://api.deezer.com/search?{query}',
-            headers={'User-Agent': USER_AGENT}
+            f"https://api.deezer.com/search?{query}", headers={"User-Agent": USER_AGENT}
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
+            data = json.loads(resp.read().decode("utf-8"))
 
-        tracks = data.get('data', [])
+        tracks = data.get("data", [])
         if not tracks:
             return None
 
         scored = []
         for track in tracks[:10]:
-            track_artist = track.get('artist', {}).get('name', '')
-            track_title = track.get('title', '')
+            track_artist = track.get("artist", {}).get("name", "")
+            track_title = track.get("title", "")
             score = _score_match(track_artist, track_title, artist, title)
-            cover_url = track.get('album', {}).get('cover_xl')
+            cover_url = track.get("album", {}).get("cover_xl")
             if cover_url:
                 scored.append((score, cover_url))
 
@@ -81,7 +80,9 @@ def fetch_cover_deezer(artist, title):
         for score, cover_url in scored:
             if score < 2.0:
                 continue
-            img_req = urllib.request.Request(cover_url, headers={'User-Agent': USER_AGENT})
+            img_req = urllib.request.Request(
+                cover_url, headers={"User-Agent": USER_AGENT}
+            )
             with urllib.request.urlopen(img_req, timeout=10) as img_resp:
                 return img_resp.read()
 

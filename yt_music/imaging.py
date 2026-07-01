@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 
-from .ui import cprint, Color
+from .ui import Color, cprint
 
 TARGET_SIZE = 640
 
@@ -12,16 +12,16 @@ def resize_square(filepath, size=TARGET_SIZE):
         return False
 
     try:
-        temp_file = filepath + '.tmp.jpg'
-        cmd = [
-            'ffmpeg', '-y', '-i', filepath,
-            '-vf', f'scale={size}:{size}',
-            temp_file
-        ]
+        temp_file = filepath + ".tmp.jpg"
+        cmd = ["ffmpeg", "-y", "-i", filepath, "-vf", f"scale={size}:{size}", temp_file]
         result = subprocess.run(cmd, capture_output=True, timeout=10)
 
         if result.returncode != 0:
-            cprint(f"[thumbnail] ffmpeg error: {result.stderr.decode('utf-8', errors='replace').strip()}", Color.YELLOW)
+            stderr = result.stderr.decode("utf-8", errors="replace").strip()
+            cprint(
+                f"[thumbnail] ffmpeg error: {stderr}",
+                Color.YELLOW,
+            )
             return False
 
         shutil.move(temp_file, filepath)
@@ -39,11 +39,16 @@ def crop_to_square(filepath):
 
     try:
         cmd = [
-            'ffprobe', '-v', 'error',
-            '-select_streams', 'v:0',
-            '-show_entries', 'stream=width,height',
-            '-of', 'csv=p=0:s=x',
-            filepath
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=p=0:s=x",
+            filepath,
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
 
@@ -52,35 +57,42 @@ def crop_to_square(filepath):
             return False
 
         dims = result.stdout.strip()
-        if 'x' not in dims:
+        if "x" not in dims:
             return False
 
-        width, height = map(int, dims.split('x'))
+        width, height = map(int, dims.split("x"))
 
         if width == height == TARGET_SIZE:
             return True
 
         if width == height:
-            crop_filter = f'scale={TARGET_SIZE}:{TARGET_SIZE}'
+            crop_filter = f"scale={TARGET_SIZE}:{TARGET_SIZE}"
         elif width > height:
-            crop_filter = f'crop={height}:{height}:(iw-oh)/2:0,scale={TARGET_SIZE}:{TARGET_SIZE}'
+            crop_filter = (
+                f"crop={height}:{height}:(iw-oh)/2:0,scale={TARGET_SIZE}:{TARGET_SIZE}"
+            )
         else:
-            crop_filter = f'crop={width}:{width}:0:(ih-ow)/2,scale={TARGET_SIZE}:{TARGET_SIZE}'
+            crop_filter = (
+                f"crop={width}:{width}:0:(ih-ow)/2,scale={TARGET_SIZE}:{TARGET_SIZE}"
+            )
 
-        temp_file = filepath + '.tmp.jpg'
-        cmd = [
-            'ffmpeg', '-y', '-i', filepath,
-            '-vf', crop_filter,
-            temp_file
-        ]
+        temp_file = filepath + ".tmp.jpg"
+        cmd = ["ffmpeg", "-y", "-i", filepath, "-vf", crop_filter, temp_file]
         result = subprocess.run(cmd, capture_output=True, timeout=10)
 
         if result.returncode != 0:
-            cprint(f"[thumbnail] ffmpeg error: {result.stderr.decode('utf-8', errors='replace').strip()}", Color.YELLOW)
+            stderr = result.stderr.decode("utf-8", errors="replace").strip()
+            cprint(
+                f"[thumbnail] ffmpeg error: {stderr}",
+                Color.YELLOW,
+            )
             return False
 
         shutil.move(temp_file, filepath)
-        cprint(f"[thumbnail] ✓ Cropped and scaled to {TARGET_SIZE}x{TARGET_SIZE}", Color.CYAN)
+        cprint(
+            f"[thumbnail] ✓ Cropped and scaled to {TARGET_SIZE}x{TARGET_SIZE}",
+            Color.CYAN,
+        )
         return True
 
     except Exception as e:
